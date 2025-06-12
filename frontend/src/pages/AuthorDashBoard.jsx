@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import useAuth from "../context/AuthContext";
 import axios from "../axios"; // Use your custom axios instance!
 import { useSnackbar } from "notistack";
+import Navbar from "../components/Navbar";
 
 const AuthorDashBoard = () => {
   const { user, token } = useAuth();
@@ -34,7 +35,7 @@ const AuthorDashBoard = () => {
     if (user && token) {
       fetchAuthorBlogs();
     }
-  }, [user, token]);
+  }, [user, token, blogs]);
 
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this blog?")) {
@@ -46,10 +47,12 @@ const AuthorDashBoard = () => {
         });
         setBlogs(blogs.filter((blog) => blog._id !== id));
         enqueueSnackbar("Blog deleted successfully", { variant: "success" });
+       
       } catch (err) {
         enqueueSnackbar(err.response?.data?.message || "Failed to delete blog", {
           variant: "error",
         });
+
       }
     }
   };
@@ -63,8 +66,13 @@ const AuthorDashBoard = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+    <div>
+      <Navbar/>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      
       <div className="flex justify-between items-center mb-6">
+        
         <h1 className="text-2xl font-bold">My Blogs</h1>
         <Link
           to="/dashboard/create-blog"
@@ -73,7 +81,7 @@ const AuthorDashBoard = () => {
           Create New Blog
         </Link>
       </div>
-
+      
       {blogs.length === 0 ? (
         <div className="text-center py-10">
           <p className="text-gray-600 mb-4">No blogs created yet.</p>
@@ -92,6 +100,10 @@ const AuthorDashBoard = () => {
               className="border rounded-lg p-4 shadow-md hover:shadow-lg cursor-pointer"
               onClick={() => navigate(`/blog/${blog.slug}`)}
             >
+              {/* <h1>{
+                console.log(blog)
+                }
+              </h1> */}
               <img
                 src={blog.blogImage}
                 alt={blog.title}
@@ -119,7 +131,7 @@ const AuthorDashBoard = () => {
                   Edit
                 </Link>
                 <button
-                  onClick={() => handleDelete(blog._id)}
+                  onClick={() => handleDelete(blog.id)}
                   className="text-red-600 hover:text-red-800"
                 >
                   Delete
@@ -130,7 +142,9 @@ const AuthorDashBoard = () => {
         </div>
       )}
     </div>
-  );
+
+    </div>
+      );
 };
 
 export default AuthorDashBoard;

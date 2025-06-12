@@ -10,7 +10,7 @@ let upload=multer({storage})
 router.post("/",auth,verifyRole("admin","author"),upload.single("blogImage"),createBlog)
 router.get("/",getBlogs)
 router.get("/:slug",auth,getBlog)
-router.put("/:id",auth,verifyRole("admin","author"),updateBlog)
+router.put("/:id",auth,verifyRole("admin","author"),upload.single("blogImage"),updateBlog)
 router.delete("/:id",auth,verifyRole("admin","author"),deleteBlog)
 
 router.post("/:id/views",auth,updateViews)

@@ -77,6 +77,7 @@ const getBlogs = async (req, res, next) => {
     blogs: blogs.map((blog) => {
       return {
         title: blog.title,
+        id:blog._id,
         blogImage: blog.blogImage,
         category: blog.category,
         slug: blog.slug,
@@ -131,7 +132,7 @@ const updateBlog = async (req, res, next) => {
   
   let updatedBlog = await Blog.findByIdAndUpdate(
     id,
-    { ...req.body },
+    { ...req.body,blogImage:req.file.path },
     { new: true }
   );
   if (!updatedBlog) {

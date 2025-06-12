@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import axios from '../axios'
 import useAuth from '../context/AuthContext'
 import { useSnackbar } from 'notistack'
+import Navbar from '../components/Navbar'
 
 const EditBlog = () => {
   const { slug } = useParams()
@@ -48,15 +49,21 @@ const EditBlog = () => {
     data.append('title', formData.title)
     data.append('description', formData.description)
     data.append('category', formData.category)
+    if(!image){
+      enqueueSnackbar('Please select an image to upload', { variant: 'warning' })
+      return
+    }
     if (image) data.append('blogImage', image)
 
     try {
-      await axios.put(`/blogs/${blogId}`, data, {
+      let response=await axios.put(`/blogs/${blogId}`, data, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
         },
       })
+      
+      
       enqueueSnackbar('Blog updated successfully', { variant: 'success' })
       navigate('/dashboard')
     } catch (err) {
@@ -69,7 +76,9 @@ const EditBlog = () => {
   if (loading) return <div className="text-center py-10">Loading...</div>
 
   return (
-    <div className="max-w-2xl mx-auto py-10 px-4">
+    <div>
+      <Navbar/>
+      <div className="max-w-2xl mx-auto py-10 px-4">
       <h1 className="text-2xl font-bold mb-6">Edit Blog</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
@@ -111,9 +120,12 @@ const EditBlog = () => {
           type="submit"
           className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
         >
-          Update Blog
+          {
+            loading? 'Updating...': 'Update Blog'
+          }
         </button>
       </form>
+    </div>
     </div>
   )
 }
