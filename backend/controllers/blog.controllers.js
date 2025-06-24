@@ -104,47 +104,38 @@ const getBlog = async (req, res, next) => {
 };
 
 const updateBlog = async (req, res, next) => {
-  let { id } = req.params;
-  const { userId } = req;
-  //find logged in user
-  let user = await User.findById(userId);
-  console.log(user);
-  if (!user) {
-    let err = new Error("User not found");
-    err.statusCode = 401;
-    throw err;
-  }
-  // Find and verify blog exists
-  const blog = await Blog.findById(id);
+  try {
+    const { id } = req.params;
+    
+    // Create update object
+    const updateData = {
+      ...req.body
+    };
 
-  if (!blog) {
-    let err = new Error("Blog not found");
-    err.statusCode = 404;
-    throw err;
-  }
+    // Only add blogImage if a new file was uploaded
+    if (req.file) {
+      updateData.blogImage = req.file.path;
+    }
 
-  // Verify author
-  if (blog.authorId.toString() !== userId.toString() && user.role !== "admin") {
-    let err = new Error("You can only update your own blogs");
-    err.statusCode = 403;
-    throw err;
-  }
-  
-  let updatedBlog = await Blog.findByIdAndUpdate(
-    id,
-    { ...req.body,blogImage:req.file.path },
-    { new: true }
-  );
-  if (!updatedBlog) {
-    let err = new Error("Failed to update blog");
-    err.statusCode = 400;
-    throw err;
-  }
+    const updatedBlog = await Blog.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true }
+    );
 
-  res.status(201).json({
-    message: "Blog updated Successfully",
-    updatedBlog,
-  });
+    if (!updatedBlog) {
+      const err = new Error("Blog not found");
+      err.statusCode = 404;
+      throw err;
+    }
+
+    res.status(200).json({
+      message: "Blog updated successfully",
+      blog: updatedBlog
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 const deleteBlog = async (req, res, next) => {
@@ -186,17 +177,31 @@ const deleteBlog = async (req, res, next) => {
 };
 
 const updateViews = async (req, res, next) => {
-  let { id } = req.params;
-  let user = await User.findById(req.userId);
-  if (!user) {
-    let err = new Error("Please login!!");
-    err.statusCode = 403;
-    throw err;
+  try {
+    const { id } = req.params;
+    
+    // Find blog and verify it exists
+    const blog = await Blog.findById(id);
+    if (!blog) {
+      const err = new Error("Blog not found");
+      err.statusCode = 404;
+      throw err;
+    }
+
+    // Use findByIdAndUpdate to atomically increment views
+    const updatedBlog = await Blog.findByIdAndUpdate(
+      id,
+      { $inc: { views: 1 } }, // Increment views by 1
+      { new: true } // Return updated document
+    );
+
+    res.status(200).json({
+      message: "Views updated successfully",
+      views: updatedBlog.views
+    });
+  } catch (error) {
+    next(error);
   }
-  let blog = await Blog.findById(id);
-  blog.views = blog.views + 1;
-  await blog.save();
-  return res.status(200).send();
 };
 
 const toggleLike = async (req, res, next) => {
@@ -221,6 +226,18 @@ const toggleLike = async (req, res, next) => {
   return res.status(200).send();
 };
 
+const getAuthorBlogs = async (req, res, next) => {
+  let { userId } = req;
+  let blogs = await Blog.find({
+    authorId: userId,
+  }).sort({ createdAt: -1 });
+
+  res.status(200).json({
+    message: "Fetched author blogs successfully",
+    blogs,
+  });
+};
+
 export {
   createBlog,
   getBlogs,
@@ -229,4 +246,5 @@ export {
   deleteBlog,
   updateViews,
   toggleLike,
+  getAuthorBlogs,
 };

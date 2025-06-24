@@ -12,4 +12,6 @@ router.put("/settings",auth,upload.single("displayPicture"),updateUser)
 //route to update user to author
 router.put("/settings/role",auth,updateUserRole)
 
+
+
 export default router;

@@ -1,5 +1,6 @@
 import Comment from "../models/comment.model.js";
 import Blog from "../models/blog.model.js";
+import userModel from "../models/user.model.js";
 
 export const postComment = async (req, res, next) => {
   let { id } = req.params;
@@ -21,10 +22,17 @@ export const postComment = async (req, res, next) => {
 
 export const deleteComment = async (req, res, next) => {
   let { id, commentId } = req.params;
-  console.log("hello");
+  let user=await userModel.findById(req.userId);
+  console.log(user);
+  
+  if (!user) {
+    let err = new Error("User not found");
+    err.statusCode = 404;
+    throw err;
+  }
   let blog = await Blog.findById(id);
   let comment = await Comment.findById(commentId);
-  if (comment.userId.toString() !== req.userId.toString()) {
+  if (user.role!=="admin" && (comment.userId.toString() !== req.userId.toString())) {
     let err = new Error("Not permitted");
     err.statusCode = 403;
     throw err;

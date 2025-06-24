@@ -83,15 +83,21 @@ const Navbar = () => {
                         >
                           Settings
                         </Link>
+                        {user?.role === "admin" && (
+                          <Link
+                            to="/admin"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Admin Dashboard
+                          </Link>
+                        )}
                         {user?.role === "author" && (
-                          <>
-                            <Link
-                              to="/dashboard"
-                              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                              Dashboard
-                            </Link>
-                          </>
+                          <Link
+                            to="/dashboard"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Author Dashboard
+                          </Link>
                         )}
                         <button
                           onClick={handleLogout}
@@ -177,6 +183,22 @@ const Navbar = () => {
                   >
                     Settings
                   </Link>
+                  {user?.role === "admin" && (
+                    <Link
+                      to="/admin"
+                      className="block px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      Admin Dashboard
+                    </Link>
+                  )}
+                  {user?.role === "author" && (
+                    <Link
+                      to="/dashboard"
+                      className="block px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      Author Dashboard
+                    </Link>
+                  )}
                   <button
                     onClick={handleLogout}
                     className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50"

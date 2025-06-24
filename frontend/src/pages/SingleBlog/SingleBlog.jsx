@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSnackbar } from "notistack";
-import axios from "../axios";
-import useAuth from "../context/AuthContext";
-import Navbar from "../components/Navbar";
+import axios from "../../axios"
+import useAuth from "../../context/AuthContext";
+import Navbar from "../../components/Navbar";
+import AuthorInfo from "./AuthorInfo";
+import LikeButton from "./LikeButton";
+import CommentForm from "./CommentForm";
+import CommentList from "./CommentList";
 
 const SingleBlog = () => {
   const { slug } = useParams();
@@ -14,6 +18,9 @@ const SingleBlog = () => {
   const [loading, setLoading] = useState(true);
   const [comment, setComment] = useState("");
   const [error, setError] = useState(null);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const hasIncrementedView = useRef(false);
 
   const fetchSingleBlog = async () => {
     try {
@@ -23,7 +30,6 @@ const SingleBlog = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-      console.log(res);
       setBlog(res.data.blog);
     } catch (error) {
       setError(error.response?.data?.message || "Error fetching blog");
@@ -35,9 +41,32 @@ const SingleBlog = () => {
     }
   };
 
+  // Fetch blog data when slug changes
   useEffect(() => {
     fetchSingleBlog();
+    hasIncrementedView.current = false; // Reset for new blog
   }, [slug]);
+
+  // Increment view only once per mount
+  useEffect(() => {
+    if (blog && !hasIncrementedView.current) {
+      hasIncrementedView.current = true;
+      axios
+        .post(`/blogs/${blog._id}/views`, null, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        .catch(() => {});
+    }
+  }, [blog, token]);
+
+  useEffect(() => {
+    if (blog && user) {
+      setIsLiked(blog.likes.includes(user._id));
+      setLikeCount(blog.likes.length);
+    }
+  }, [blog, user]);
 
   const handleComment = async (e) => {
     e.preventDefault();
@@ -62,13 +91,16 @@ const SingleBlog = () => {
 
   const handleDeleteComment = async (commentId) => {
     try {
-      let res=await axios.delete(`/blogs/${blog._id}/comments/${commentId}`, {
+      let res = await axios.delete(`/blogs/${blog._id}/comments/${commentId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
       console.log(res);
-      enqueueSnackbar("Comment deleted successfully", { variant: "success",autoHideDuration:3000 });
+      enqueueSnackbar("Comment deleted successfully", {
+        variant: "success",
+        autoHideDuration: 3000,
+      });
       fetchSingleBlog(); // Refresh comments after deletion
     } catch (error) {
       enqueueSnackbar(
@@ -77,6 +109,32 @@ const SingleBlog = () => {
           variant: "error",
         }
       );
+    }
+  };
+
+  const handleLike = async () => {
+    // Optimistically update UI
+    if (isLiked) {
+      setIsLiked(false);
+      setLikeCount((prev) => prev - 1);
+    } else {
+      setIsLiked(true);
+      setLikeCount((prev) => prev + 1);
+    }
+    try {
+      await axios.put(`/blogs/${blog._id}/likes`, null, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      // No need to refetch the blog here!
+    } catch (error) {
+      enqueueSnackbar(error.response?.data?.message || "Error updating like", {
+        variant: "error",
+      });
+      // Revert optimistic update on error
+      setIsLiked((prev) => !prev);
+      setLikeCount((prev) => (isLiked ? prev + 1 : prev - 1));
     }
   };
 
@@ -144,101 +202,42 @@ const SingleBlog = () => {
             <h1 className="text-3xl font-bold text-gray-900 mb-4">
               {blog.title}
             </h1>
-            <p className="text-gray-700 leading-relaxed mb-6">
-              {blog.description}
-            </p>
+            <div
+              className="prose prose-lg max-w-none"
+              dangerouslySetInnerHTML={{
+                __html: blog.description,
+              }}
+            />
 
             {/* Author Info */}
-            <div className="flex items-center border-t pt-6">
-              <img
-                src={blog.authorId.displayPicture}
-                alt={blog.authorId.username}
-                className="h-12 w-12 rounded-full object-cover"
-              />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-900">
-                  {blog.authorId.username.toString().toUpperCase()}
-                </p>
-                <p className="text-sm text-gray-500">{blog.authorId.role}</p>
-              </div>
-            </div>
+            <AuthorInfo author={blog.authorId} />
           </div>
+        </div>
+
+        {/* Like and Comment Section */}
+        <div className="mt-4 bg-white rounded-lg shadow-md p-6">
+          <LikeButton
+            isLiked={isLiked}
+            likeCount={likeCount}
+            onLike={handleLike}
+          />
         </div>
 
         {/* Comments Section */}
         <div className="mt-8 bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Comments</h2>
-
-          {/* Comment Form */}
           {user && (
-            <form onSubmit={handleComment} className="mb-6">
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Add a comment..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                rows="3"
-                style={{ resize: "none" }}
-              />
-              <button
-                type="submit"
-                className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                Post Comment
-              </button>
-            </form>
+            <CommentForm
+              comment={comment}
+              setComment={setComment}
+              onSubmit={handleComment}
+            />
           )}
-
-          {/* Comments List */}
-          <div className="space-y-4">
-            {blog.comments.length === 0 ? (
-              <p className="text-gray-500">No comments yet</p>
-            ) : (
-              blog.comments.map((comment) => (
-                <div key={comment._id} className="border-b pb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center">
-                      <img
-                        src={comment.userId.displayPicture}
-                        alt={comment.userId.username}
-                        className="h-8 w-8 rounded-full object-cover"
-                      />
-                      <div className="ml-3">
-                        <p className="text-sm font-medium text-gray-900">
-                          {comment.userId.username}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(comment.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    {user && comment.userId._id === user._id && (
-                      <button
-                        onClick={() => handleDeleteComment(comment._id)}
-                        className="text-red-600 hover:text-red-800 text-sm flex items-center"
-                      >
-                        <svg
-                          className="h-4 w-4 mr-1"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-gray-700">{comment.comment}</p>
-                </div>
-              ))
-            )}
-          </div>
+          <CommentList
+            comments={blog.comments}
+            user={user}
+            onDelete={handleDeleteComment}
+          />
         </div>
       </div>
     </div>
